@@ -322,7 +322,7 @@ def spawn_lights(n_lights=3, radius=1.7, height=1.5, energy_range=(10,100), colo
             light_data.size = random.uniform(0.5, 2.0)
             if light_data.shape == 'RECTANGLE':
                 light_data.size_y = random.uniform(0.5, 2.0)
-            direction = (-x, -y, -z)  # vector from light to origin
+            direction = (x, y, z)  # vector from light to origin
             light_obj.rotation_mode = 'XYZ'
             light_obj.rotation_euler = (
                 math.atan2(direction[1], direction[2] + 1e-6) + random.uniform(-0.1, 0.1),
