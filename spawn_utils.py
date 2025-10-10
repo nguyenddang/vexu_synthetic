@@ -80,6 +80,13 @@ def clear_all_blocks():
         if mesh is not None and mesh.users == 0:
             bpy.data.meshes.remove(mesh)
 
+def clear_lights():
+    """
+    Delete all lights
+    """
+    lights = bpy.data.collections['Lights']
+    for obj in list(lights.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
 
 # Main spawn functions -------------------------------------------------------------------------
 def spawn_ground(red_percentage: float, total_block: int, static_objects: list[str], retry_limit: int):
@@ -279,3 +286,46 @@ def spawn_cg(red_percentage: list[float], total_blocks: list[int]):
 
     return all_spawned
 
+def spawn_lights(n_lights=3, radius=1.7, height=1.5, energy_range=(10,100), colour_jitter=0.5):
+    """
+    Spawn random light rig in dome formation above the field
+    """
+    
+    for i in range(n_lights):
+        # math stuff: dome calculation
+        theta = random.uniform(0, 2 * math.pi)
+        phi = random.uniform(0, math.pi/2)
+        r = random.uniform(0.3, 1.0) * radius
+        x = r * math.cos(theta) * math.sin(phi)
+        y = r * math.sin(theta) * math.sin(phi)
+        z = height * math.cos(phi)
+        # init
+        light_type = random.choice(['POINT', 'AREA'])
+        light_data = bpy.data.lights.new(f"Light_{i}", type=light_type)
+        light_obj = bpy.data.objects.new(f"Light_{i}", light_data)
+        #link to collection
+        bpy.data.collections["Lights"].objects.link(light_obj)
+        # create
+        light_obj.location = (x, y, z)
+        light_data.energy = random.uniform(*energy_range)
+        hue_shift = random.uniform(-colour_jitter, colour_jitter)
+        light_data.color = (
+            1.0 - abs(hue_shift) * random.random(),
+            1.0 - abs(hue_shift) * random.random(),
+            1.0
+            )
+        light_data.use_temperature = True
+        light_data.temperature = random.uniform(3000, 7000)
+        
+        if light_type == "AREA":
+            light_data.shape = random.choice(['SQUARE', 'RECTANGLE', 'DISK', 'ELLIPSE'])
+            light_data.size = random.uniform(0.5, 2.0)
+            if light_data.shape == 'RECTANGLE':
+                light_data.size_y = random.uniform(0.5, 2.0)
+            direction = (-x, -y, -z)  # vector from light to origin
+            light_obj.rotation_mode = 'XYZ'
+            light_obj.rotation_euler = (
+                math.atan2(direction[1], direction[2] + 1e-6) + random.uniform(-0.1, 0.1),
+                -math.atan2(direction[0], direction[2] + 1e-6) + random.uniform(-0.1, 0.1),
+                random.uniform(-math.pi, math.pi)
+            )
