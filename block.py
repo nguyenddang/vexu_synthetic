@@ -2,9 +2,8 @@ import bpy
 import random
 import math 
 import mathutils
+from utils import check_overlap, world_aabb, local_aabb
 
-
-# Utility functions -------------------------------------------------------------------------
 def spawn_block(colour, location, random_rotate=True, extra45=False):
     """
     Spawn block of a single colour at specified location.
@@ -35,60 +34,6 @@ def spawn_block(colour, location, random_rotate=True, extra45=False):
             new_obj.rotation_euler.z += math.radians(45) # extra 45 degree rotation for center tubes
     return new_obj
 
-def world_aabb(obj): 
-    """
-    Convert local bounding box of obj to world axis-aligned bounding box 
-    """
-    depsgraph = bpy.context.evaluated_depsgraph_get()
-    eval_obj = obj.evaluated_get(depsgraph)
-    bpy.context.view_layer.update()  # ensure transforms are fresh
-    bb = [eval_obj.matrix_world @ mathutils.Vector(c) for c in eval_obj.bound_box]
-    xs = [v.x for v in bb]; ys = [v.y for v in bb]; zs = [v.z for v in bb]
-    return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
-
-def check_overlap(obj1, obj2):
-    """
-    Check if obj1, obj2 overlap using aabb
-    """
-    min1, max1 = world_aabb(obj1)
-    min2, max2 = world_aabb(obj2)
-    overlap_x = min1[0] <= max2[0] and max1[0] >= min2[0]
-    overlap_y = min1[1] <= max2[1] and max1[1] >= min2[1]
-    overlap_z = min1[2] <= max2[2] and max1[2] >= min2[2]
-    return overlap_x and overlap_y and overlap_z
-
-def local_aabb(obj):
-    bb_local = [mathutils.Vector(corner) for corner in obj.bound_box]
-    xs = [v.x for v in bb_local]; ys = [v.y for v in bb_local]; zs = [v.z for v in bb_local]
-    return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
-
-def clear_all_blocks():
-    """
-    Delete all spawned blocks and remove their mesh datablocks.
-    """
-    to_delete = [
-        obj for obj in bpy.data.objects
-        if (obj.name.startswith("BlueBlock") or obj.name.startswith("RedBlock"))
-        and obj.name not in ['BlueBlock', 'RedBlock']
-    ]
-    for obj in to_delete:
-        # store the mesh before deleting the object
-        mesh = getattr(obj, "data", None)
-        # remove the object from the scene and Blender data
-        bpy.data.objects.remove(obj, do_unlink=True)
-        # if the mesh has no other users, remove it too
-        if mesh is not None and mesh.users == 0:
-            bpy.data.meshes.remove(mesh)
-
-def clear_lights():
-    """
-    Delete all lights
-    """
-    lights = bpy.data.collections['Lights']
-    for obj in list(lights.objects):
-        bpy.data.objects.remove(obj, do_unlink=True)
-
-# Main spawn functions -------------------------------------------------------------------------
 def spawn_ground(red_percentage: float, total_block: int, static_objects: list[str], retry_limit: int):
     """
     Spawn blocks on ground
@@ -130,7 +75,7 @@ def spawn_ground(red_percentage: float, total_block: int, static_objects: list[s
 
         if not success:
             print(f"Could not place {colour} after 50 attempts!")
-    return spawned_objects
+    return spawned_objects, ['Ground'] * len(spawned_objects)
 
 def spawn_loaders(red_percentage: list[float], total_blocks: list[int]):
     """
@@ -143,7 +88,8 @@ def spawn_loaders(red_percentage: list[float], total_blocks: list[int]):
     assert len(red_percentage) == len(total_blocks) == 4, "Only have 4 loaders"
     assert max(total_blocks) <= 6, "Loaders can only hold max 6 blocks"
     all_spawned = []
-    epsilon = 0.01
+    classes = []
+    epsilon = 0.03
     xys = [
         (obj.location.x,
          obj.location.y + epsilon if obj.location.y < 0  else obj.location.y - epsilon)
@@ -162,10 +108,10 @@ def spawn_loaders(red_percentage: list[float], total_blocks: list[int]):
                 # shift 
                 dummy_obj.location.z = prev_top + curr_height
             block_spawned.append(dummy_obj) 
-                
+        classes.extend([f'Loader_{idx}'] * len(block_spawned))
         all_spawned.extend(block_spawned)
 
-    return all_spawned, 
+    return all_spawned, classes 
 
 def spawn_lg(red_percentage: list[float], total_blocks: list[int]):
     """
@@ -177,9 +123,10 @@ def spawn_lg(red_percentage: list[float], total_blocks: list[int]):
     """
     assert len(red_percentage) == len(total_blocks) == 2, "Only have 2 long goals"
     assert max(total_blocks) <= 15, "Long goals can only hold 15 blocks"
-    epsilon_z = 0.0165
+    epsilon_z = 0.035
     epsilon_x = 0.001
     all_spawned = []
+    classes = []
     bounds = [world_aabb(obj) for obj in bpy.data.objects if obj.name.startswith('LongGoal.')]
     xs = [obj.location.x + epsilon_x if obj.location.x < 0 else obj.location.x - epsilon_x for obj in bpy.data.objects if obj.name.startswith('LongGoal.')]
     z = bpy.data.objects['LongGoal.001'].location.z + epsilon_z
@@ -223,10 +170,10 @@ def spawn_lg(red_percentage: list[float], total_blocks: list[int]):
                     move_dist = -back_space * random.uniform(0, 1)
 
             obj.location.y += move_dist
-
+        classes.extend([f'LongGoal_{idx}'] * len(tube_spawned))
         all_spawned.extend(tube_spawned)
-    
-    return all_spawned
+
+    return all_spawned, classes 
 
 def spawn_cg(red_percentage: list[float], total_blocks: list[int]):
     """
@@ -238,14 +185,16 @@ def spawn_cg(red_percentage: list[float], total_blocks: list[int]):
     """
     assert len(red_percentage) == len(total_blocks) == 2, 'Only 2 center goals'
     assert max(total_blocks) <= 7, 'Center goals can hold max 7 blocks'
-    epsilon = 0.03
+    upper_epsilon = 0.027
+    lower_epsilon = -0.002    
     all_spawned = []
+    classes = []
     cgs = [obj for obj in bpy.data.objects if obj.name.endswith('CenterGoal')]
     for idx, (rp, tb) in enumerate(zip(red_percentage, total_blocks)):
         tube = cgs[idx]
         bounds = local_aabb(tube)
         y_min, y_max = bounds[0][1], bounds[1][1]
-        z = cgs[idx].location.z + epsilon
+        z = cgs[idx].location.z + upper_epsilon if tube.name.startswith('Upper') else cgs[idx].location.z + lower_epsilon
         block_spawned = []
         for i in range(tb):
             colour = "RedBlock" if random.random() < rp else "BlueBlock"
@@ -281,51 +230,10 @@ def spawn_cg(red_percentage: list[float], total_blocks: list[int]):
             obj.location = tube.matrix_world @ local_pos
             local_positions[i] = local_pos
 
-
+        classes.extend([f'CenterGoal_{idx}'] * len(block_spawned))
         all_spawned.extend(block_spawned)
 
-    return all_spawned
+    return all_spawned, classes
 
-def spawn_lights(n_lights=3, radius=1.7, height=1.5, energy_range=(10,100), colour_jitter=0.5):
-    """
-    Spawn random light rig in dome formation above the field
-    """
-    
-    for i in range(n_lights):
-        # math stuff: dome calculation
-        theta = random.uniform(0, 2 * math.pi)
-        phi = random.uniform(0, math.pi/2)
-        r = random.uniform(0.3, 1.0) * radius
-        x = r * math.cos(theta) * math.sin(phi)
-        y = r * math.sin(theta) * math.sin(phi)
-        z = height * math.cos(phi)
-        # init
-        light_type = random.choice(['POINT', 'AREA'])
-        light_data = bpy.data.lights.new(f"Light_{i}", type=light_type)
-        light_obj = bpy.data.objects.new(f"Light_{i}", light_data)
-        #link to collection
-        bpy.data.collections["Lights"].objects.link(light_obj)
-        # create
-        light_obj.location = (x, y, z)
-        light_data.energy = random.uniform(*energy_range)
-        hue_shift = random.uniform(-colour_jitter, colour_jitter)
-        light_data.color = (
-            1.0 - abs(hue_shift) * random.random(),
-            1.0 - abs(hue_shift) * random.random(),
-            1.0
-            )
-        light_data.use_temperature = True
-        light_data.temperature = random.uniform(3000, 7000)
-        
-        if light_type == "AREA":
-            light_data.shape = random.choice(['SQUARE', 'RECTANGLE', 'DISK', 'ELLIPSE'])
-            light_data.size = random.uniform(0.5, 2.0)
-            if light_data.shape == 'RECTANGLE':
-                light_data.size_y = random.uniform(0.5, 2.0)
-            direction = (x, y, z)  # vector from light to origin
-            light_obj.rotation_mode = 'XYZ'
-            light_obj.rotation_euler = (
-                math.atan2(direction[1], direction[2] + 1e-6) + random.uniform(-0.1, 0.1),
-                -math.atan2(direction[0], direction[2] + 1e-6) + random.uniform(-0.1, 0.1),
-                random.uniform(-math.pi, math.pi)
-            )
+
+            

@@ -1,7 +1,7 @@
 import bpy 
 import random 
 import math 
-from block_utils import check_overlap
+from block import check_overlap
 def spawn_robot(static_objects, retry_limit: 50):
     """Spawn robot (camera base) at random location
     
