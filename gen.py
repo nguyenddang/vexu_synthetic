@@ -25,6 +25,9 @@ staticg_objects = [
     'GroundGoalRed.003',
     'GroundGoalRed.004',
     'GroundGoalRed.005',
+    'LongSupportBar.002',
+    'LongSupportBar.001'
+    
 ] + ['Wall.{:03d}'.format(i) for i in range(1, 45)]
 def new_scene():
     """

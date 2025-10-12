@@ -3,6 +3,7 @@ import random
 import math 
 import mathutils
 import gc 
+from colorsys import rgb_to_hsv, hsv_to_rgb
 
 def cleanup_render_images():
     """Remove render result images that accumulate in memory"""
@@ -229,3 +230,42 @@ def spawn_lights(n_lights=6, radius=3.4, height=1.5, energy_range=(10,100), colo
                 -math.atan2(direction[0], direction[2] + 1e-6) + random.uniform(-0.1, 0.1),
                 random.uniform(-math.pi, math.pi)
             )
+
+def new_world(path):
+    world = bpy.context.scene.world
+    node_tree = world.node_tree
+    nodes = node_tree.nodes 
+    env_node = nodes.get("Environment Texture")
+    img = bpy.data.images.load(path, check_existing=True)
+    #replace hdri
+    env_node.image = img
+    # random rotationz
+    mapping_node = nodes.get("Mapping")
+    if mapping_node:
+        mapping_node.inputs['Rotation'].default_value[0] = random.uniform(0, 2*math.pi)  # X tilt
+        mapping_node.inputs['Rotation'].default_value[1] = random.uniform(0, 2*math.pi)  # Y tilt
+        mapping_node.inputs['Rotation'].default_value[2] = random.uniform(0, 2*math.pi)  # Z rotation
+    # random noise texture
+    noise_node = nodes.get("Noise Texture")
+    if noise_node:
+        noise_node.inputs['Scale'].default_value = random.uniform(2, 8)
+        noise_node.inputs['Detail'].default_value = random.uniform(2, 6)
+        noise_node.inputs['Roughness'].default_value = random.uniform(0.4, 0.8)
+        noise_node.inputs['W'].default_value = random.random() * 10
+     # random colour ramp
+    color_ramp = nodes.get("ColorRamp")
+    if color_ramp:
+        for elem in color_ramp.color_ramp.elements:
+            r, g, b = elem.color[:3]
+            h, s, v = rgb_to_hsv(r, g, b)
+            h += random.uniform(-0.03, 0.03)
+            s += random.uniform(-0.05, 0.05)
+            v += random.uniform(-0.05, 0.05)
+            elem.color = (*hsv_to_rgb(h, s, v), 1)
+
+    # ramdom hsv
+    hsv_node = nodes.get("Hue Saturation Value")
+    if hsv_node:
+        hsv_node.inputs['Hue'].default_value = 1 + random.uniform(-0.03, 0.03)
+        hsv_node.inputs['Saturation'].default_value = 1 + random.uniform(-0.1, 0.1)
+        hsv_node.inputs['Value'].default_value = 1 + random.uniform(-0.05, 0.05)
