@@ -164,7 +164,7 @@ def generate_random_field(n_blocks=(68, 74)):
     lp = red_percentages[:4]
     lgp = red_percentages[4:6]
     cgp = red_percentages[6:8]
-    gp = red_percentages[8:]
+    gp = red_percentages[8]
     actual_red = sum(red_allocations)
     return {
         "loaders": {
@@ -181,17 +181,16 @@ def generate_random_field(n_blocks=(68, 74)):
         },
         "ground": {
             "red_percentage": gp,
-            "total_blocks": [ground_counts]
+            "total_blocks": ground_counts
         },
         "actual_red": actual_red,
         "total": total_blocks
     }
     
-def spawn_lights(n_lights=6, radius=3.4, height=1.5, energy_range=(10,100), colour_jitter=0.5):    
+def spawn_lights(n_lights=6, radius=1.7, height=8, energy_range=(50,200), colour_jitter=0.8):
     """
     Spawn random light rig in dome formation above the field
     """
-    
     for i in range(n_lights):
         # math stuff: dome calculation
         theta = random.uniform(0, 2 * math.pi)
@@ -242,8 +241,8 @@ def new_world(path):
     # random rotationz
     mapping_node = nodes.get("Mapping")
     if mapping_node:
-        mapping_node.inputs['Rotation'].default_value[0] = random.uniform(0, 2*math.pi)  # X tilt
-        mapping_node.inputs['Rotation'].default_value[1] = random.uniform(0, 2*math.pi)  # Y tilt
+        mapping_node.inputs['Rotation'].default_value[0] = random.uniform(-0.5, 0.5)  # X tilt
+        mapping_node.inputs['Rotation'].default_value[1] = random.uniform(-0.5, 0.5)  # Y tilt
         mapping_node.inputs['Rotation'].default_value[2] = random.uniform(0, 2*math.pi)  # Z rotation
     # random noise texture
     noise_node = nodes.get("Noise Texture")
@@ -251,7 +250,6 @@ def new_world(path):
         noise_node.inputs['Scale'].default_value = random.uniform(2, 8)
         noise_node.inputs['Detail'].default_value = random.uniform(2, 6)
         noise_node.inputs['Roughness'].default_value = random.uniform(0.4, 0.8)
-        noise_node.inputs['W'].default_value = random.random() * 10
      # random colour ramp
     color_ramp = nodes.get("ColorRamp")
     if color_ramp:

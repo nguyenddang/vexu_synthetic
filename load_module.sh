@@ -41,7 +41,8 @@ export LD_LIBRARY_PATH="/cm/shared/spack/opt/spack/linux-ubuntu20.04-x86_64/gcc-
 echo "Library paths configured."
 
 # Navigate to Blender directory
-BLENDER_DIR="/home/nddang/ai_projects/vex_synthetic/blender-4.5.3-linux-x64"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BLENDER_DIR="$SCRIPT_DIR/blender-4.5.3-linux-x64"
 cd "$BLENDER_DIR"
 
 echo "Environment setup complete!"

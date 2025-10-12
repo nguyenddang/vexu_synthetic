@@ -13,7 +13,7 @@ def spawn_robot(static_objects, retry_limit: 50):
     yr = (bpy.data.objects['Wall.025'].location.y,bpy.data.objects['Wall.026'].location.y)
     xr = (bpy.data.objects['Wall.029'].location.x,bpy.data.objects['Wall.024'].location.x)
     robot = bpy.data.objects['Robot']
-    
+    static_objects = [obj for obj in bpy.data.objects if obj.name in static_objects]
     success = False 
     attempts = 0
     while not success and attempts < retry_limit:
@@ -35,6 +35,8 @@ def spawn_robot(static_objects, retry_limit: 50):
         'location': tuple(robot.location),
         'rotation': tuple(robot.rotation_euler)
     }
+    
+    
     
 def capture(scene, output_dir, compression_type):
     """

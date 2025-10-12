@@ -1,2 +1,8 @@
 blender-4.5.3-linux-x64.tar.xz
 blender-4.5.3-linux-x64/
+.venv/
+*.tar
+*.blend
+hdris_world/
+renders/
+__pycache__/
