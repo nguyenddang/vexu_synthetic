@@ -6,3 +6,4 @@ blender-4.5.3-linux-x64/
 hdris_world/
 renders/
 __pycache__/
+*.out
