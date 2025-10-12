@@ -46,4 +46,12 @@ Submit a job
 ```bash
 sbatch gen.sh
 ``` 
-See `gen.sh` for more details. By default script generate 1000 scenes with 5 captures each. Adjust as needed. Note that each capture is ~1.2MB. So 1000 scenes with 5 captures each is ~6GB. Make sure you have enough space in your home directory.
+See `gen.sh` for more details. By default script generate 1000 scenes with 5 captures each. Adjust as needed. You can generate on multiple GPUs by submitting multiple jobs with different `--gpu` index. Simply `sbatch gen.sh` multiple times but change the `--gpu` flag.
+
+## Hardware + time considerations
+Note that each capture (with 1920x1200 resolution) is ~1.2MB. So 1000 scenes with 5 captures each is ~6GB. Make sure you have enough space in your home directory. A single capture takes ~ 13-15s. So 1000 scenes with 5 captures each will take ~ 4.5 hours on a single L40S GPU. You can speed this up by submitting multiple jobs with different `--gpu` index.
+
+TODO:
+- Maybe extending data to segmentation?
+
+
