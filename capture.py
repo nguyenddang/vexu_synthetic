@@ -13,6 +13,8 @@ def spawn_robot(static_objects, retry_limit: 50):
     yr = (bpy.data.objects['Wall.025'].location.y,bpy.data.objects['Wall.026'].location.y)
     xr = (bpy.data.objects['Wall.029'].location.x,bpy.data.objects['Wall.024'].location.x)
     robot = bpy.data.objects['Robot']
+    old_location = robot.location.copy()
+    old_rotation = robot.rotation_euler.copy()
     static_objects = [obj for obj in bpy.data.objects if obj.name in static_objects]
     success = False 
     attempts = 0
@@ -29,14 +31,15 @@ def spawn_robot(static_objects, retry_limit: 50):
         else:
             success = True
     if not success:
-        raise Exception("Failed to spawn robot without collisions after multiple attempts.")
+        # respawn at original location
+        robot.location = old_location
+        robot.rotation_euler = old_rotation
+        print(f"Warning: Failed to spawn robot without collisions after {retry_limit} attempts. Respawning at original location.")
     
     return {
         'location': tuple(robot.location),
         'rotation': tuple(robot.rotation_euler)
     }
-    
-    
     
 def capture(scene, output_dir, compression_type):
     """
@@ -47,6 +50,7 @@ def capture(scene, output_dir, compression_type):
         compression_type: image compression type (e.g., 'png', 'jpg')
     """
     cameras = [obj for obj in bpy.data.objects if obj.type == 'CAMERA']
+    robot = bpy.data.objects['Robot']
     # use a single "camera" to render, move it around. 
     # this increase loading time significantly 
     render_camera = cameras[0]
@@ -57,10 +61,11 @@ def capture(scene, output_dir, compression_type):
     for i, cam in enumerate(cameras):
         render_camera.location = cam.location
         render_camera.rotation_euler = cam.rotation_euler
+        cam_world_matrix = robot.matrix_world @ cam.matrix_local
         camera_transforms.append({
             'name': cam.name,
-            'location': tuple(cam.location),
-            'rotation': tuple(cam.rotation_euler)
+            'location': tuple(cam_world_matrix.to_translation()),
+            'rotation': tuple(cam_world_matrix.to_euler())
         })
         save_dir = f"{output_dir}/{cam.name}.{compression_type}"
         scene.render.filepath = save_dir

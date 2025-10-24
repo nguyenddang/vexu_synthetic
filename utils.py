@@ -241,8 +241,8 @@ def new_world(path):
     # random rotationz
     mapping_node = nodes.get("Mapping")
     if mapping_node:
-        mapping_node.inputs['Rotation'].default_value[0] = random.uniform(-0.5, 0.5)  # X tilt
-        mapping_node.inputs['Rotation'].default_value[1] = random.uniform(-0.5, 0.5)  # Y tilt
+        mapping_node.inputs['Rotation'].default_value[0] = random.uniform(0, 2*math.pi)  # X tilt
+        mapping_node.inputs['Rotation'].default_value[1] = random.uniform(0, 2*math.pi)  # Y tilt
         mapping_node.inputs['Rotation'].default_value[2] = random.uniform(0, 2*math.pi)  # Z rotation
     # random noise texture
     noise_node = nodes.get("Noise Texture")
