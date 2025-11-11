@@ -16,12 +16,11 @@ from capture import spawn_robot, capture
 import argparse
 import json 
 import random 
-
+import math 
 import time 
 start_time = time.time()
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU id to use')
-parser.add_argument('--n_capture', type=int, default=5, help='Number of captures per scene (robot locations)')
 parser.add_argument('--n_scene', type=int, default=10, help='Number of scenes to generate')
 parser.add_argument('--cycles-device', required=False, help='Place holder for cycles device')
 argv = []
@@ -54,6 +53,7 @@ staticg_objects = [
     'GroundGoalRed.005',
     'LongSupportBar.002',
     'LongSupportBar.001'
+    'Robot'
     
 ] + ['Wall.{:03d}'.format(i) for i in range(1, 45)] # objects to avoid collisions with when spawning
 def new_scene():
@@ -99,44 +99,54 @@ scene.render.engine = 'CYCLES'
 scene.cycles.samples = 128
 scene.render.image_settings.file_format = 'JPEG'
 scene.render.resolution_x = 1280
-scene.render.resolution_y = 720
+scene.render.resolution_y = 704
 scene.render.resolution_percentage = 100
 scene.cycles.denoising_use_gpu = True
 scene.render.use_persistent_data = True
 scene.cycles.adaptive_threshold = 0.03
+# print camera focal and sensor size
+for cam in [obj for obj in bpy.data.objects if obj.type == 'CAMERA']:
+    print(f"Camera {cam.name}: Focal Length = {cam.data.lens}mm, Sensor Width = {cam.data.sensor_width}mm, Sensor Height = {cam.data.sensor_height}mm", flush=True)
 
 # main generation loop
 output_dir = os.path.join(os.getcwd(), 'renders', f'gpu_{args.gpu}')
-all_hdris_path = [os.path.join("hdris_world", fname) for fname in os.listdir("hdris_world") if os.path.isfile(os.path.join("hdris_world", fname))]
-for scene_idx in range(args.n_scene):
+all_hdris_path = [
+    os.path.join("hdris_world", fname) 
+    for fname in os.listdir("hdris_world") 
+    if os.path.isfile(os.path.join("hdris_world", fname))
+]
+n_hdris = len(all_hdris_path)
+n_scenes = args.n_scene
+scenes_per_hdri = math.ceil(n_scenes / n_hdris)
+
+for scene_idx in range(n_scenes):
+    print(f"Generating scene {scene_idx}", flush=True)
+
     cleanup_render_images()
-    # create new scene 
-    print(f"Generating scene {scene_idx}")
+    clear_lights()
+    spawn_lights()
+    # pick hdri based on scene index
+    hdri_idx = scene_idx // scenes_per_hdri
+    hdri_idx = min(hdri_idx, n_hdris - 1)  # in case of rounding
+    current_hdri = all_hdris_path[hdri_idx]
+    new_hdri_flag = (scene_idx % scenes_per_hdri == 0)
+    new_world(current_hdri, new_hdri=new_hdri_flag)
+    robot_meta = spawn_robot(staticg_objects, 50)
     meta_data, all_blocks = new_scene()
-    # save scene metadata
-    os.makedirs(os.path.join(output_dir, f"scene_{scene_idx:04d}"), exist_ok=True)
-    with open(os.path.join(output_dir, f"scene_{scene_idx:04d}", "field_metadata.json"), 'w') as f:
+    scene_dir = os.path.join(output_dir, f"scene_{scene_idx}")
+    os.makedirs(scene_dir, exist_ok=True)
+    with open(os.path.join(scene_dir, "field_metadata.json"), 'w') as f:
         json.dump(meta_data, f, indent=4)
-        
-    # capture
-    for capture_idx in range(args.n_capture):
-        print(f"  Capturing {capture_idx}")
-        # spawn lights and get new world
-        clear_lights()
-        spawn_lights()
-        new_world(random.choice(all_hdris_path))
-        robot_meta = spawn_robot(staticg_objects + [obj.name for obj in all_blocks], 50)
-        # capture_dir = f"output/scene_{scene_idx:04d}/capture_{capture_idx:02d}"
-        capture_dir = os.path.join(output_dir, f"scene_{scene_idx:04d}", f"capture_{capture_idx:02d}")
-        scene = bpy.context.scene
-        cameras_meta = capture(scene, capture_dir, 'jpg')
-        capture_meta = {
-            "robot": robot_meta,
-            "cameras": cameras_meta
-        }
-        with open(f"{capture_dir}/capture_meta.json", 'w') as f:
-            json.dump(capture_meta, f, indent=4)
+    scene = bpy.context.scene
+    cameras_meta = capture(scene, scene_dir, 'jpg')
+    capture_meta = {
+        "robot": robot_meta,
+        "cameras": cameras_meta
+    }
+    with open(os.path.join(scene_dir, "capture_meta.json"), 'w') as f:
+        json.dump(capture_meta, f, indent=4)
+
 
 end_time = time.time()
-print(f"Total time taken: {end_time - start_time} seconds")
-print("Generation complete!")
+print(f"Total time taken: {end_time - start_time} seconds", flush=True)
+print("Generation complete!", flush=True)

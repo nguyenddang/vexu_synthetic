@@ -11,7 +11,7 @@
 source ./setup_blender.sh
 source ./load_module.sh
 cd ..
-CUDA_VISIBLE_DEVICES=0 ./blender-4.5.3-linux-x64/blender -b v1.0.1.blend --quiet --python gen.py -- --gpu 3 --n_capture 5 --n_scene 1000 --cycles-device OPTIX
+CUDA_VISIBLE_DEVICES=0 ./blender-4.5.3-linux-x64/blender -b v1.0.2.blend --quiet --python gen.py -- --gpu 3 --n_scene 5000 --cycles-device OPTIX
 
 # Wait for all processes to complete
 wait

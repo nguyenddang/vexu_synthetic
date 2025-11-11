@@ -2,6 +2,7 @@ import bpy
 import random 
 import math 
 from block import check_overlap
+import numpy as np
 def spawn_robot(static_objects, retry_limit: 50):
     """Spawn robot (camera base) at random location
     
@@ -9,7 +10,8 @@ def spawn_robot(static_objects, retry_limit: 50):
         static_objects (list): list of objects to avoid collisions with
         retry_limit (int): number of attempts to find a valid spawn location
     """
-    z = -0.102071 # hard coding here. not the best practice
+    z = -0.07856 # hard coding here. not the best practice
+    static_objects = [obj for obj in static_objects if obj != 'Robot']
     yr = (bpy.data.objects['Wall.025'].location.y,bpy.data.objects['Wall.026'].location.y)
     xr = (bpy.data.objects['Wall.029'].location.x,bpy.data.objects['Wall.024'].location.x)
     robot = bpy.data.objects['Robot']
@@ -62,10 +64,10 @@ def capture(scene, output_dir, compression_type):
         render_camera.location = cam.location
         render_camera.rotation_euler = cam.rotation_euler
         cam_world_matrix = robot.matrix_world @ cam.matrix_local
+        cam_world_matrix = cam_world_matrix.inverted()
         camera_transforms.append({
             'name': cam.name,
-            'location': tuple(cam_world_matrix.to_translation()),
-            'rotation': tuple(cam_world_matrix.to_euler())
+            'extrinsic_matrix': np.array(cam_world_matrix).tolist()
         })
         save_dir = f"{output_dir}/{cam.name}.{compression_type}"
         scene.render.filepath = save_dir
