@@ -37,7 +37,11 @@ def spawn_robot(static_objects, retry_limit: 50):
         robot.location = old_location
         robot.rotation_euler = old_rotation
         print(f"Warning: Failed to spawn robot without collisions after {retry_limit} attempts. Respawning at original location.")
-    
+    bpy.context.view_layer.objects.active = robot
+    robot.select_set(True)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=False)
+    robot.select_set(False)
+    bpy.context.view_layer.update()
     return {
         'location': tuple(robot.location),
         'rotation': tuple(robot.rotation_euler)
@@ -51,8 +55,12 @@ def capture(scene, output_dir, compression_type):
         output_dir: directory to save the rendered images
         compression_type: image compression type (e.g., 'png', 'jpg')
     """
+    obj_hide = ['RedBlock', 'BlueBlock', 'Robot']
+    for obj_name in obj_hide:
+        obj = bpy.data.objects[obj_name]
+        obj.hide_render = True
+        obj.hide_viewport = True
     cameras = [obj for obj in bpy.data.objects if obj.type == 'CAMERA']
-    robot = bpy.data.objects['Robot']
     # use a single "camera" to render, move it around. 
     # this increase loading time significantly 
     render_camera = cameras[0]
@@ -63,11 +71,12 @@ def capture(scene, output_dir, compression_type):
     for i, cam in enumerate(cameras):
         render_camera.location = cam.location
         render_camera.rotation_euler = cam.rotation_euler
-        cam_world_matrix = robot.matrix_world @ cam.matrix_local
-        cam_world_matrix = cam_world_matrix.inverted()
+        cam_world_matrix = cam.matrix_world.normalized().inverted()
+        vf = [np.array(vf_i).tolist() for vf_i in cam.data.view_frame(scene=scene)]
         camera_transforms.append({
             'name': cam.name,
-            'extrinsic_matrix': np.array(cam_world_matrix).tolist()
+            'extrinsic_matrix': np.array(cam_world_matrix).tolist(),
+            'view_frame': vf
         })
         save_dir = f"{output_dir}/{cam.name}.{compression_type}"
         scene.render.filepath = save_dir
@@ -77,5 +86,11 @@ def capture(scene, output_dir, compression_type):
     for cam, (loc, rot) in zip(cameras, original_transforms):
         cam.location = loc
         cam.rotation_euler = rot
+    
+    # unhide objects
+    for obj_name in obj_hide:
+        obj = bpy.data.objects[obj_name]
+        obj.hide_render = False
+        obj.hide_viewport = False
     
     return camera_transforms

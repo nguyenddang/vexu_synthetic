@@ -7,3 +7,4 @@ hdris_world/
 renders/
 __pycache__/
 *.out
+*.ipynb

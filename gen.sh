@@ -8,10 +8,9 @@
 #SBATCH --gres=gpu:1            # number of gpus
 #SBATCH -C "L40S"               # GPU type
 
-source ./setup_blender.sh
 source ./load_module.sh
 cd ..
-CUDA_VISIBLE_DEVICES=0 ./blender-4.5.3-linux-x64/blender -b v1.0.2.blend --quiet --python gen.py -- --gpu 3 --n_scene 5000 --cycles-device OPTIX
+CUDA_VISIBLE_DEVICES=0 ./blender-4.5.3-linux-x64/blender -b v2.0.0.blend --quiet --python gen.py -- --gpu 7 --n_scene 5000 --cycles-device OPTIX
 
 # Wait for all processes to complete
 wait

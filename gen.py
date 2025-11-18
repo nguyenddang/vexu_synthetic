@@ -18,6 +18,8 @@ import json
 import random 
 import math 
 import time 
+# fix seed for reproducibility
+random.seed(90)
 start_time = time.time()
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU id to use')
@@ -34,6 +36,8 @@ staticg_objects = [
     'LongLeg.002',
     'LongLeg.003',
     'LongLeg.004',
+    'LongSupportBar.001',
+    'LongSupportBar.002',
     'CenterLeg.001',
     'CenterLeg.002',
     'LowerCenterGoal',
@@ -52,8 +56,10 @@ staticg_objects = [
     'GroundGoalRed.004',
     'GroundGoalRed.005',
     'LongSupportBar.002',
-    'LongSupportBar.001'
-    'Robot'
+    'LongSupportBar.001',
+    'Robot',
+    'BlueBlock',
+    'RedBlock',
     
 ] + ['Wall.{:03d}'.format(i) for i in range(1, 45)] # objects to avoid collisions with when spawning
 def new_scene():
@@ -74,10 +80,11 @@ def new_scene():
     all_classes = gbc + lbc + lgc + cgc
     assert len(all_blocks) == len(all_classes)
     block_positions = []
+    bpy.context.view_layer.update()
     for idx, obj in enumerate(all_blocks):
         block_positions.append({
             "location": tuple(obj.location),
-            "rotation": tuple(obj.rotation_euler),
+            "dimensions": tuple(obj.dimensions),
             "colour": "red" if "RedBlock" in obj.name else "blue",
             "class": all_classes[idx]
         })
@@ -150,3 +157,14 @@ for scene_idx in range(n_scenes):
 end_time = time.time()
 print(f"Total time taken: {end_time - start_time} seconds", flush=True)
 print("Generation complete!", flush=True)
+# n_scenes = 5
+
+# for scene_idx in range(n_scenes):
+#     print(f"Generating scene {scene_idx}", flush=True)
+
+#     cleanup_render_images()
+#     clear_lights()
+#     spawn_lights()
+#     robot_meta = spawn_robot(staticg_objects, 50)
+#     meta_data, all_blocks = new_scene()
+

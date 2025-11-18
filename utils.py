@@ -3,7 +3,6 @@ import random
 import math 
 import mathutils
 import gc 
-from colorsys import rgb_to_hsv, hsv_to_rgb
 
 def cleanup_render_images():
     """Remove render result images that accumulate in memory"""
@@ -40,64 +39,22 @@ def world_aabb(obj):
     xs = [v.x for v in bb]; ys = [v.y for v in bb]; zs = [v.z for v in bb]
     return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
 
-def get_obb(obj):
-    """
-    Return center, axes (unit vectors), and half-sizes of a Blender object as OBB.
-    """
+def get_aabb(obj):
+    """Return min and max world coordinates of an axis-aligned object."""
     bb_world = [obj.matrix_world @ mathutils.Vector(corner) for corner in obj.bound_box]
-    
-    # compute center
-    center = sum(bb_world, mathutils.Vector()) / 8.0
-    scale = obj.matrix_world.to_scale()
-    rot = obj.matrix_world.to_3x3()
-    axes = [
-        (rot @ mathutils.Vector((1,0,0))).normalized(),
-        (rot @ mathutils.Vector((0,1,0))).normalized(),
-        (rot @ mathutils.Vector((0,0,1))).normalized()
-    ]
-
-    # half-sizes along each local axis
-    local_bb = [mathutils.Vector(c) for c in obj.bound_box]
-    half_sizes = [
-        (max(v[i] for v in local_bb) - min(v[i] for v in local_bb)) / 2.0
-        for i in range(3)
-    ]
-
-    return center, axes, half_sizes
+    xs = [v.x for v in bb_world]
+    ys = [v.y for v in bb_world]
+    zs = [v.z for v in bb_world]
+    return (min(xs), max(xs)), (min(ys), max(ys)), (min(zs), max(zs))
 
 def check_overlap(obj_a, obj_b):
-    """
-    Check if two objects overlap using full 3D SAT (OBB).
-    """
-    C1, A1, H1 = get_obb(obj_a)
-    C2, A2, H2 = get_obb(obj_b)
-
-    R = [[A1[i].dot(A2[j]) for j in range(3)] for i in range(3)]
-    absR = [[abs(R[i][j]) + 1e-8 for j in range(3)] for i in range(3)]  # epsilon
-    t_vec = C2 - C1
-    t = [t_vec.dot(A1[i]) for i in range(3)]
-    for i in range(3):
-        ra = H1[i]
-        rb = H2[0]*absR[i][0] + H2[1]*absR[i][1] + H2[2]*absR[i][2]
-        if abs(t[i]) > ra + rb:
-            return False
-
-    for i in range(3):
-        ra = H1[0]*absR[0][i] + H1[1]*absR[1][i] + H1[2]*absR[2][i]
-        rb = H2[i]
-        proj = t[0]*R[0][i] + t[1]*R[1][i] + t[2]*R[2][i]
-        if abs(proj) > ra + rb:
-            return False
-
-    for i in range(3):
-        for j in range(3):
-            ra = H1[(i+1)%3]*absR[(i+2)%3][j] + H1[(i+2)%3]*absR[(i+1)%3][j]
-            rb = H2[(j+1)%3]*absR[i][(j+2)%3] + H2[(j+2)%3]*absR[i][(j+1)%3]
-            val = abs(t[(i+2)%3]*R[(i+1)%3][j] - t[(i+1)%3]*R[(i+2)%3][j])
-            if val > ra + rb:
-                return False
-
-    return True
+    (ax_min, ax_max), (ay_min, ay_max), (az_min, az_max) = get_aabb(obj_a)
+    (bx_min, bx_max), (by_min, by_max), (bz_min, bz_max) = get_aabb(obj_b)
+    return (
+        ax_min <= bx_max and ax_max >= bx_min and
+        ay_min <= by_max and ay_max >= by_min and
+        az_min <= bz_max and az_max >= bz_min
+    )
 
 def local_aabb(obj):
     bb_local = [mathutils.Vector(corner) for corner in obj.bound_box]
