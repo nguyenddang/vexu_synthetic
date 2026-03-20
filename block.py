@@ -4,7 +4,7 @@ import math
 import mathutils
 from utils import check_overlap, world_aabb, local_aabb
 
-def spawn_block(colour, location, random_rotate=True, extra45=False):
+def spawn_block(colour, location: tuple[float, float, float], random_rotate=True, extra45=False):
     """
     Spawn block of a single colour at specified location.
     Optional random rotate + 45 degree z axis rotation
@@ -91,7 +91,7 @@ def spawn_loaders(red_percentage: list[float], total_blocks: list[int]):
     assert len(red_percentage) == len(total_blocks) == 4, "Only have 4 loaders"
     assert max(total_blocks) <= 6, "Loaders can only hold max 6 blocks"
 
-    def world_z_min(obj):
+    def world_z_min(obj): 
         return min((obj.matrix_world @ v.co).z for v in obj.data.vertices)
 
     all_spawned = []

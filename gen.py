@@ -15,11 +15,8 @@ from block import spawn_ground, spawn_loaders, spawn_lg, spawn_cg
 from capture import spawn_robot, capture
 import argparse
 import json 
-import random 
 import math 
 import time 
-# fix seed for reproducibility
-random.seed(90)
 start_time = time.time()
 parser = argparse.ArgumentParser()
 parser.add_argument('--gpu', type=int, default=0, help='GPU id to use')
